@@ -188,17 +188,21 @@ type CodeInfomation struct {
 	Value interface{}
 }
 
-func FormatString(s string) string {
+func FormatString(s string) (string, error) {
 	var (
 		slen = len(s)
 	)
+
+	if slen <= 1 {
+		return "", types.ErrorWrongSentence
+	}
 
 	if s[0] == 34 && s[slen-1] == 34 {
 		s = s[1 : slen-1]
 		s = strings.Replace(s, `\"`, `"`, -1)
 		s = strings.Replace(s, `\\`, `\`, -1)
 	}
-	return s
+	return s, nil
 
 	// if s[0] == 39 && s[slen-1] == 39 { // 引号 '
 	// 	// FIXME

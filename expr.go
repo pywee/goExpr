@@ -5,7 +5,6 @@ import (
 	"go/token"
 	"strconv"
 	"strings"
-	"sync"
 
 	fn "github.com/pywee/lit/function"
 	"github.com/pywee/lit/global"
@@ -22,7 +21,6 @@ import (
 var cfn *fn.CustomFunctions
 
 type expression struct {
-	lk             sync.RWMutex
 	funcBlocks     []*fn.FunctionInfo
 	codeBlocks     []*global.Block
 	publicVariable map[string]*global.Structure
@@ -36,6 +34,7 @@ type exprResult struct {
 
 func NewExpr(src []byte) (*expression, error) {
 	var (
+		err    error
 		s      scanner.Scanner
 		fset   = token.NewFileSet()
 		expr   = make([]*global.Structure, 0, 100)
@@ -74,7 +73,10 @@ func NewExpr(src []byte) (*expression, error) {
 			stok = "BOOL"
 		}
 		if stok == "STRING" || stok == "CHAR" {
-			lit = global.FormatString(lit)
+			lit, err = global.FormatString(lit)
+			if err != nil {
+				return nil, err
+			}
 		}
 		expr = append(expr, &global.Structure{
 			Tok:      stok,
@@ -84,7 +86,7 @@ func NewExpr(src []byte) (*expression, error) {
 	}
 
 	innerVar := make(map[string]*global.Structure, 5)
-	_, err := result.initExpr(expr, innerVar, nil)
+	_, err = result.initExpr(expr, innerVar, nil)
 	// global.Output(innerVar["a"])
 	return nil, err
 }
@@ -151,16 +153,15 @@ func (r *expression) parseExprs(expr []*global.Structure, innerVar global.InnerV
 		// 数组赋值
 		if thisExpr.Tok == "IDENT" && i+1 < rlen {
 			tok := expr[i+1].Tok
-			if tokIdx := global.IsTokInArray(expr[i:], "="); tokIdx != -1 && tok == "[" {
-				// global.Output(expr[i:])
-				if blocks, i = parseIdentedArrayVAR(r, blocks, expr, innerVar, i+tokIdx, rlen, i); i == -1 {
-					return nil, types.ErrorIlligleVisitedOfArray
-				}
-				continue
-			}
 			if global.InArrayString(tok, global.MathSym) {
 				if blocks, i = parseIdentedVAR(r, blocks, expr, innerVar, tok, rlen, i); i == -1 {
 					return nil, types.ErrorWrongVarOperation
+				}
+				continue
+			}
+			if tokIdx := global.IsTokInArray(expr[i:], "="); tokIdx != -1 && tok == "[" {
+				if blocks, i = parseIdentedArrayVAR(r, blocks, expr, innerVar, i+tokIdx, rlen, i); i == -1 {
+					return nil, types.ErrorIlligleVisitedOfArray
 				}
 				continue
 			}
@@ -193,7 +194,7 @@ func (r *expression) parseExprs(expr []*global.Structure, innerVar global.InnerV
 		}
 
 		// 函数调用
-		if expr[i].Tok == "IDENT" && i < rlen && expr[i+1].Tok == "(" {
+		if expr[i].Tok == "IDENT" && i+1 < rlen && expr[i+1].Tok == "(" {
 			blocks, i = parseExecFUNC(blocks, expr, i, rlen)
 			continue
 		}
@@ -224,13 +225,13 @@ func (r *expression) parseExprs(expr []*global.Structure, innerVar global.InnerV
 		}
 
 		// 变量自增操作
-		if thisExpr.Tok == "IDENT" && i < rlen && expr[i+1].Tok == "++" {
+		if thisExpr.Tok == "IDENT" && i+1 < rlen && expr[i+1].Tok == "++" {
 			blocks, i = parseIdentedVarPLUS(blocks, expr, i, rlen)
 			continue
 		}
 
 		// 变量自减操作
-		if thisExpr.Tok == "IDENT" && i < rlen && expr[i+1].Tok == "--" {
+		if thisExpr.Tok == "IDENT" && i+1 < rlen && expr[i+1].Tok == "--" {
 			blocks, i = parseIdentedVarREDUCE(blocks, expr, i, rlen)
 			continue
 		}
@@ -244,9 +245,11 @@ func (r *expression) parseExprs(expr []*global.Structure, innerVar global.InnerV
 
 // initExpr 全局表达式入口
 // 代码块中如果带有 if 等复杂语句 则需要从这里进入递归
+// 调用此函数时 expr 结尾处必须带入分号 ";"
 func (r *expression) initExpr(expr []*global.Structure, innerVar global.InnerVar, runtime *parsing) (*global.Structure, error) {
 	bs, err := r.parseExprs(expr, innerVar, runtime)
 	if err != nil {
+		// global.Output(expr)
 		return nil, err
 	}
 
@@ -384,8 +387,12 @@ func (r *expression) initExpr(expr []*global.Structure, innerVar global.InnerVar
 			}
 		} else if block.Type == types.CodeTypeIdentFOR {
 			forExpr := block.ForExt
-			if forExpr.Type == types.TypeForExpressionIteration {
+			if fType := forExpr.Type; fType == types.TypeForExpressionIteration {
 				if err = r.execFORType1(forExpr, innerVar); err != nil {
+					return nil, err
+				}
+			} else if fType == types.TypeForExpressionRange {
+				if err = r.execForTypeRange(forExpr, innerVar); err != nil {
 					return nil, err
 				}
 			}
@@ -485,7 +492,7 @@ func (r *expression) parse(expr []*global.Structure, innerVar global.InnerVar) (
 		)
 
 		if exLen > 3 {
-			if expr[i].Tok == "IDENT" && expr[i+1].Tok == "[" {
+			if i+1 < exLen && expr[i].Tok == "IDENT" && expr[i+1].Tok == "[" {
 				var ok bool
 				arrayType = 1
 				thisArrayVar, ok = innerVar[expr[i].Lit]
@@ -622,7 +629,10 @@ func (r *expression) parse(expr []*global.Structure, innerVar global.InnerVar) (
 	// 访问多维数组操作
 	// a[0][0][0]
 	if innerLen >= 4 && innerExpr[0].Tok == "ARRAY" {
-		// global.Output(innerExpr[0])
+		// FIXME 检测合法性
+		if innerExpr[1].Tok != "[" {
+			return nil, types.ErrorWrongSentence
+		}
 		return r.parse(innerExpr, innerVar)
 	}
 
@@ -670,7 +680,8 @@ func (r *expression) GetVal(vName string) interface{} {
 		return types.ErrorNotFoundVariable
 	}
 	if len(ret.Lit) > 1 && (ret.Tok == "STRING" || ret.Tok == "CHAR") {
-		return global.FormatString(ret.Lit)
+		lit, _ := global.FormatString(ret.Lit)
+		return lit
 	}
 	return ret.Lit
 }

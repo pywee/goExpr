@@ -29,7 +29,6 @@ func parseIdentedVAR(r *expression, blocks []*global.Block, expr []*global.Struc
 	}
 
 	if tok == "=" {
-		// global.Output(code[2:])
 		blocks = append(blocks, &global.Block{Name: thisLit, Type: types.CodeTypeIdentVAR, Code: code[2:]})
 		return blocks, i
 	}

@@ -9,8 +9,8 @@ var (
 	ErrorWrongSentence = errors.New("语法错误")
 	// ErrorWrongVarOperation 语法错误,变量操作不合法
 	ErrorWrongVarOperation = errors.New("语法错误,变量操作不合法")
-	// ErrorNotFoundVariable 变量不存在，或者你的定义非法
-	ErrorNotFoundVariable = errors.New("变量不存在,或者你的定义非法")
+	// ErrorNotFoundVariable 非法定义
+	ErrorNotFoundVariable = errors.New("非法定义，或者访问了不存在的变量")
 	// ErrorNonNumberic 非法字符参与数学计算
 	ErrorNonNumberic = errors.New("a non-numeric value encountered has found")
 	// ErrorIdentType 源类型错误，当前类型不能转换为整型
@@ -65,9 +65,10 @@ var (
 
 // for 流程控制语句错误处理
 var (
-	ErrorForExpression = errors.New("for 语法错误")
-	ErrorForContinue   = errors.New("continue 关键字应在循环语句中出现")
-	ErrorForBreak      = errors.New("break 关键字应在循环语句中出现")
+	ErrorForExpression     = errors.New("for 语法错误")
+	ErrorForContinue       = errors.New("continue 关键字应在循环语句中出现")
+	ErrorForBreak          = errors.New("break 关键字应在循环语句中出现")
+	ErrorNotSupportToRange = errors.New("此数据不支持使用 range 循环")
 )
 
 var (

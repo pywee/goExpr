@@ -84,3 +84,12 @@ func (s *Structure) Val() string {
 func (s *Structure) Type() string {
 	return s.Tok
 }
+
+func Index(arr []*Structure, sep string) int {
+	for k, v := range arr {
+		if v.Lit == sep {
+			return k
+		}
+	}
+	return -1
+}

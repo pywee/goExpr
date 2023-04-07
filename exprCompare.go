@@ -4,7 +4,6 @@ import (
 	"strconv"
 
 	"github.com/pywee/lit/global"
-	"github.com/pywee/lit/types"
 )
 
 func (r *expression) parseComparison(left, right []*global.Structure, tok string, innerVar global.InnerVar) (*global.Structure, error) {
@@ -158,7 +157,7 @@ func compareGreaterLessEqual(syn string, left, right *global.Structure) (bool, e
 	}
 
 	if left.Tok != right.Tok || (left.Tok != "INT" && left.Tok != "FLOAT") {
-		return false, types.ErrorNotAllowToCompare
+		return false, nil
 	}
 
 	var ok bool

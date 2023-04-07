@@ -1,19 +1,5 @@
 
-
-
-// 声明数组 a
-// 直接通过 println 输出 a 及其下标 a[0]
-a = [1]
-
-// 输出 Array 1
-println(a, a[0])
-
-// 多维数组的声明及参与运算的效果
-b = [9, [123]]
-b[1][0] = 1
-func demo(arr) {
-    return arr[1]
+arr = [1+2, 1, 2]
+for k, v = range arr {
+    println(k)
 }
-
-// 输出 2
-println(demo(b)[0]+1)

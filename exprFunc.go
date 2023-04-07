@@ -99,6 +99,8 @@ func (r *expression) execInnerFunc(funcName string, expr []*global.Structure, po
 		return nil, types.ErrorTooManyArgs
 	}
 
+	// global.Output(args)
+
 	// FIXME
 	// get params after parsing
 	// 汇总解析成功之后的实参数据
@@ -109,6 +111,8 @@ func (r *expression) execInnerFunc(funcName string, expr []*global.Structure, po
 		// FIXME
 		// 函数中的实参表达式 实参可以是函数、变量、算术表达式等等
 		// global.Output(varg)
+		// return nil, nil
+
 		rv, err := r.parse(varg, innerVar)
 		if err != nil {
 			return nil, err
